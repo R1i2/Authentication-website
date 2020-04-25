@@ -6,7 +6,8 @@ const mongoose=require("mongoose");
 const encrypt=require("mongoose-encryption");
 const app=express();
 mongoose.connect("mongodb://localhost:27017/userDB",{useNewUrlParser:true,useUnifiedTopology:true});
-const md5=require("md5");
+// const md5=require("md5");
+const bcrypt=require("bcrypt");
 const userSchema=new mongoose.Schema({
     username:String,
     password:String
@@ -29,27 +30,29 @@ app.get("/register",function(req,res){
 });
 
 app.post("/register",function(req,res){
-    const user=new User({
-        username:req.body.username,
-        password:md5(req.body.password)
+    bcrypt.hash(req.body.password,10,function(err,hash){
+        const user=new User({
+            username:req.body.username,
+            password:hash
+        });
+        user.save(function(err){
+            if(err){
+                console.log(err);
+            }
+            else
+            {
+                res.render("secrets");
+            }
+        });
     });
-    user.save(function(err){
-        if(err){
-            console.log(err);
-        }
-        else
-        {
-            res.render("secrets");
-        }
-    })
 });
 app.post("/login",function(req,res){
     User.findOne({username:req.body.username},function(err,result){
         if(!err){
             if(result){
-                if(result.password===md5(req.body.password)){
-                    res.render("secrets");
-                }
+                bcrypt.compare(req.body.password,result.password,function(err,response){
+                    if(response===true){res.render("secrets");}
+                });
             }
         }
     })
